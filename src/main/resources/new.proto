@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+
+package com.akhil.test;
+
+service ImageUpload {
+  rpc GetBlob(stream PutRequest) returns (PutResponse) {}
+}
+
+message PutRequest {
+  string name = 1;
+  bytes data = 2;
+  int64 offset = 3;
+}
+
+message PutResponse {
+  int32 status = 1;
+  string message = 2;
+}
