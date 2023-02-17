@@ -10,9 +10,9 @@ import java.io.*;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
-public class UploadFileClient3 {
+public class UploadFileClient3 implements Runnable {
     private static final Logger logger = Logger.getLogger(UploadFileClient.class.getName());
-    private static final int PORT = 50053;
+    private static final int PORT = 50054;
 
     private final ManagedChannel Channel;
     private final ImageUploadGrpc.ImageUploadBlockingStub BlockingStub;
@@ -31,7 +31,7 @@ public class UploadFileClient3 {
     }
 
     public void shutdown() throws InterruptedException {
-        Channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
+        Channel.shutdown().awaitTermination(5,TimeUnit.SECONDS);
     }
 
     public void startStream(final String filepath) {
@@ -83,16 +83,29 @@ public class UploadFileClient3 {
         requestObserver.onCompleted();
     }
 
-    public static void main(String[] args) throws Exception {
+//    public static void main(String[] args) throws Exception {
+//        UploadFileClient3 client3 = new UploadFileClient3("localhost", PORT);
+//        try {
+//            Long time = System.currentTimeMillis();
+//            client3.startStream("/Users/akhil-pt6225/Downloads/test1.jpg");
+//            Long time1 = System.currentTimeMillis()-time;
+//            logger.info("Time taken for streaming is " +time1);
+//            logger.info("Done with startStream");
+//        } finally {
+//            client3.shutdown();
+//        }
+//    }
+
+    @Override
+    public void run() {
         UploadFileClient3 client3 = new UploadFileClient3("localhost", PORT);
+        client3.startStream("/Users/akhil-pt6225/Downloads/test2.jpg");
         try {
-            Long time = System.currentTimeMillis();
-            client3.startStream("/Users/akhil-pt6225/Downloads/test1.jpg");
-            Long time1 = System.currentTimeMillis()-time;
-            logger.info("Time taken for streaming is " +time1);
-            logger.info("Done with startStream");
-        } finally {
             client3.shutdown();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
+
+
     }
 }

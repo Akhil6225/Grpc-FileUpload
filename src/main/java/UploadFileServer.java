@@ -4,7 +4,8 @@ import com.akhil.test.PutResponse;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
-
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
 import java.io.BufferedOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -12,11 +13,11 @@ import java.util.logging.Logger;
 public class UploadFileServer {
     private static final Logger logger = Logger.getLogger(UploadFileServer.class.getName());
     private static final int PORT = 50054;
-
     private Server Server;
     private void start() throws IOException {
         Server = ServerBuilder.forPort(PORT)
                 .addService(new UploadFileServer.ImageUploadImpl())
+                .maxInboundMessageSize(999999999)
                 .build()
                 .start();
         logger.info("Server started, listening on " + PORT);
@@ -73,13 +74,15 @@ public class UploadFileServer {
                         }
                         temp = name.charAt(i)+ temp;
                     }
-                     name = "/Users/akhil-pt6225/Downloads/ImageUploadWithMultipleClients/src/main/"+temp;
+                     name = "/Users/akhil-pt6225/Downloads/ImageUploadWithMultipleClients/src/main/UploadedFiles/"+temp;
+//                    System.out.println("\n\n\nFile being uploaded :: "+temp);
                     try {
                         if (bufferedOutputStream == null) {
                             bufferedOutputStream = new BufferedOutputStream(new FileOutputStream(name));
                         }
                         bufferedOutputStream.write(data);
                         bufferedOutputStream.flush();
+                        System.out.println("\n\n\nFile being uploaded :: "+temp);
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -87,7 +90,7 @@ public class UploadFileServer {
 
                 @Override
                 public void onError(Throwable t) {
-
+                    System.out.println("\n\n\n"+t.getMessage());
                 }
 
                 @Override
@@ -108,6 +111,7 @@ public class UploadFileServer {
                     {
                         e.printStackTrace();
                     }
+                    System.out.println("\n\n\nFile uploaded ");
                 }
             };
         }

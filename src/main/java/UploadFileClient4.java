@@ -6,21 +6,28 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.stub.StreamObserver;
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.FileHandler;
 import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 
-public class UploadFileClient4 {
+public class UploadFileClient4 implements Runnable{
     private static final Logger logger = Logger.getLogger(UploadFileClient.class.getName());
-    private static final int PORT = 50053;
+    private static final int PORT = 50054;
 
-    private final ManagedChannel Channel;
-    private final ImageUploadGrpc.ImageUploadBlockingStub BlockingStub;
-    private final ImageUploadGrpc.ImageUploadStub AsyncStub;
+    private  ManagedChannel Channel;
+    private  ImageUploadGrpc.ImageUploadBlockingStub BlockingStub;
+    private  ImageUploadGrpc.ImageUploadStub AsyncStub;
 
-    public UploadFileClient4(String host, int port) {
+    String location;
+
+    public UploadFileClient4(String host, int port,String s) {
         this(ManagedChannelBuilder.forAddress(host, port)
                 .usePlaintext()
                 .build());
+        this.location =s;
     }
 
     UploadFileClient4(ManagedChannel channel) {
@@ -34,7 +41,8 @@ public class UploadFileClient4 {
     }
 
     public void startStream(final String filepath) {
-        logger.info("tid: " +  Thread.currentThread().getId() + ", Will try to getBlob");
+        logger.info("tid: " +  Thread.currentThread().isAlive() + ", Will try to getBlob");
+//        System.out.println("tid: " +  Thread.currentThread().isAlive() + ", Will try to getBlob");
         StreamObserver<PutResponse> responseObserver = new StreamObserver<PutResponse>() {
 
             @Override
@@ -82,19 +90,52 @@ public class UploadFileClient4 {
         requestObserver.onCompleted();
     }
 
-    public static void main(String[] args) throws Exception {
-        UploadFileClient4 client4 = new UploadFileClient4("localhost", PORT);
+//    public static void main(String[] args) throws Exception {
+//        UploadFileClient4 client4 = new UploadFileClient4("localhost", PORT);
+//
+//        try {
+//            Long time = System.currentTimeMillis();
+//            client4.startStream("/Users/akhil-pt6225/Downloads/test1.jpg");
+//            Long time1 = System.currentTimeMillis()-time;
+//            logger.info("Time taken for streaming is " +time1);
+//            logger.info("Done with startStream");
+//        } finally {
+//            client4.shutdown();
+//
+//        }
+//
+//    }
 
+    @Override
+    public void run() {
+        Logger logger1 = Logger.getLogger("ImageLogs");
+
+        FileHandler fh;
         try {
-            Long time = System.currentTimeMillis();
-            client4.startStream("/Users/akhil-pt6225/Downloads/test1.jpg");
-            Long time1 = System.currentTimeMillis()-time;
-            logger.info("Time taken for streaming is " +time1);
-            logger.info("Done with startStream");
-        } finally {
-            client4.shutdown();
-
+            fh = new FileHandler("/Users/akhil-pt6225/Downloads/ImageLogs.txt");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
+        logger1.addHandler(fh);
+        SimpleFormatter formatter = new SimpleFormatter();
+        fh.setFormatter(formatter);
+        long time = System.currentTimeMillis();
+        startStream(location);
+        long size;
+        try {
+            size = Files.size(Paths.get(location));
 
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        Long time1 = System.currentTimeMillis()-time;
+        logger1.info("Time taken" + " "+ time1 + " " + location + " " + size/1024+ "kb");
+        logger.info("Done with startStream");
+        try {
+            shutdown();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
+
 }

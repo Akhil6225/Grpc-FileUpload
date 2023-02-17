@@ -7,21 +7,29 @@ import io.grpc.ManagedChannelBuilder;
 import io.grpc.stub.StreamObserver;
 
 import java.io.*;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CountedCompleter;
+import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 
-public class UploadFileClient2 {
+public class UploadFileClient2 implements  Runnable {
     private static final Logger logger = Logger.getLogger(UploadFileClient.class.getName());
-    private static final int PORT = 50053;
+    private static final int PORT = 50054;
 
-    private final ManagedChannel Channel;
-    private final ImageUploadGrpc.ImageUploadBlockingStub BlockingStub;
-    private final ImageUploadGrpc.ImageUploadStub AsyncStub;
+    private ManagedChannel Channel;
+    private ImageUploadGrpc.ImageUploadBlockingStub BlockingStub;
+    private ImageUploadGrpc.ImageUploadStub AsyncStub;
 
-    public UploadFileClient2(String host, int port) {
+    CountDownLatch latch;
+    private String location;
+
+    public UploadFileClient2(String host, int port, String loc,CountDownLatch latch) {
         this(ManagedChannelBuilder.forAddress(host, port)
+                .maxInboundMessageSize(999999999)
                 .usePlaintext()
                 .build());
+        this.location = loc;
+        this.latch=latch;
     }
 
     UploadFileClient2(ManagedChannel channel) {
@@ -31,11 +39,11 @@ public class UploadFileClient2 {
     }
 
     public void shutdown() throws InterruptedException {
-        Channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
+        Channel.shutdown();
     }
 
     public void startStream(final String filepath) {
-        logger.info("tid: " +  Thread.currentThread().getId() + ", Will try to getBlob");
+        logger.info("tid: " + Thread.currentThread().getId() + ", Will try to getBlob");
         StreamObserver<PutResponse> responseObserver = new StreamObserver<PutResponse>() {
 
             @Override
@@ -83,16 +91,36 @@ public class UploadFileClient2 {
         requestObserver.onCompleted();
     }
 
-    public static void main(String[] args) throws Exception {
-        UploadFileClient2 client2 = new UploadFileClient2("localhost", PORT);
+//    public static void main(String[] args) throws Exception {
+//        UploadFileClient2 client2 = new UploadFileClient2("localhost", PORT);
+//        try {
+//            Long time = System.currentTimeMillis();
+//            client2.startStream("/Users/akhil-pt6225/Downloads/test5.jpg");
+//            Long time1 = System.currentTimeMillis()-time;
+//            logger.info("Time taken for streaming is " +time1);
+//            logger.info("Done with startStream");
+//        } finally {
+//            client2.shutdown();
+//        }
+//    }
+
+    @Override
+    public void run() {
         try {
-            Long time = System.currentTimeMillis();
-            client2.startStream("/Users/akhil-pt6225/Downloads/test2.jpg");
-            Long time1 = System.currentTimeMillis()-time;
-            logger.info("Time taken for streaming is " +time1);
+//        long time = System.currentTimeMillis();
+            System.out.println(Thread.currentThread().getId() + " started");
+            startStream(location);
+//        long time1 = System.currentTimeMillis() - time;
+//        logger.info("Time taken for streaming is " + time1 + ":::" + Thread.currentThread().getName());
             logger.info("Done with startStream");
-        } finally {
-            client2.shutdown();
+            System.out.println(Thread.currentThread().getId() + " ended");
+            try {
+                shutdown();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }finally {
+            latch.countDown();
         }
     }
 }
