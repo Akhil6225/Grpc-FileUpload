@@ -10,16 +10,16 @@ import java.io.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CountedCompleter;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 public class UploadFileClient2 implements  Runnable {
     private static final Logger logger = Logger.getLogger(UploadFileClient.class.getName());
-    private static final int PORT = 50054;
+    private static final int PORT = 50055;
 
     private ManagedChannel Channel;
     private ImageUploadGrpc.ImageUploadBlockingStub BlockingStub;
     private ImageUploadGrpc.ImageUploadStub AsyncStub;
-
     CountDownLatch latch;
     private String location;
 
@@ -42,7 +42,9 @@ public class UploadFileClient2 implements  Runnable {
         Channel.shutdown();
     }
 
-    public void startStream(final String filepath) {
+    public void startStream(final String filepath) throws InterruptedException {
+
+        final CountDownLatch countDownLatch = new CountDownLatch(1);
         logger.info("tid: " + Thread.currentThread().getId() + ", Will try to getBlob");
         StreamObserver<PutResponse> responseObserver = new StreamObserver<PutResponse>() {
 
@@ -54,24 +56,29 @@ public class UploadFileClient2 implements  Runnable {
             @Override
             public void onError(Throwable t) {
                 logger.info("Client response onError");
+                countDownLatch.countDown();
             }
 
             @Override
             public void onCompleted() {
                 logger.info("Client response onCompleted");
+                countDownLatch.countDown();
             }
         };
-        StreamObserver<PutRequest> requestObserver = AsyncStub.getBlob(responseObserver);
+        if(!countDownLatch.await(2000, TimeUnit.MILLISECONDS)){
+            logger.info("Time exceeded 1 second");
+        }
+        StreamObserver<PutRequest> requestObserver = AsyncStub.withDeadlineAfter(1,TimeUnit.SECONDS).getBlob(responseObserver);
         try {
 
             File file = new File(filepath);
-            if (file.exists() == false) {
+            if (!file.exists()) {
                 logger.info("File does not exist");
                 return;
             }
             try {
                 BufferedInputStream bInputStream = new BufferedInputStream(new FileInputStream(file));
-                int bufferSize = 512 * 1024; // 512k
+                int bufferSize = 15 * 1024 * 1024;
                 byte[] buffer = new byte[bufferSize];
                 int size = 0;
                 while ((size = bInputStream.read(buffer)) > 0) {
@@ -79,8 +86,6 @@ public class UploadFileClient2 implements  Runnable {
                     PutRequest req = PutRequest.newBuilder().setName(filepath).setData(byteString).setOffset(size).build();
                     requestObserver.onNext(req);
                 }
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -106,20 +111,16 @@ public class UploadFileClient2 implements  Runnable {
 
     @Override
     public void run() {
-        try {
-//        long time = System.currentTimeMillis();
+          try {
             System.out.println(Thread.currentThread().getId() + " started");
             startStream(location);
-//        long time1 = System.currentTimeMillis() - time;
-//        logger.info("Time taken for streaming is " + time1 + ":::" + Thread.currentThread().getName());
             logger.info("Done with startStream");
             System.out.println(Thread.currentThread().getId() + " ended");
-            try {
-                shutdown();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        }finally {
+            shutdown();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        finally {
             latch.countDown();
         }
     }

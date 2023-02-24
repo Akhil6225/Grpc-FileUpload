@@ -46,36 +46,41 @@ public class RunnableClient2 implements Runnable {
 //        executor.shutdown();
 //    }
 //}
-
+    CountDownLatch latch;
+//        RunnableClient2(CountDownLatch latch){
+//            this.latch =latch;
+//        }
     @Override
     public void run() {
-        String[] fileLocation = new String[1];
-        fileLocation[0] = "/Users/akhil-pt6225/Downloads/TEST.jpg";
-//        fileLocation[1] = "/Users/akhil-pt6225/Downloads/test2.jpg";
-//        fileLocation[2] = "/Users/akhil-pt6225/Downloads/test6.jpg";
-//        fileLocation[3] = "/Users/akhil-pt6225/Downloads/test3.jpg";
-//        fileLocation[4] = "/Users/akhil-pt6225/Downloads/test7.jpg";
+
+            String[] fileLocation = new String[5];
+            fileLocation[0] = "/Users/akhil-pt6225/Downloads/TEST.jpg";
+            fileLocation[1] = "/Users/akhil-pt6225/Downloads/test2.jpg";
+            fileLocation[2] = "/Users/akhil-pt6225/Downloads/test6.jpg";
+            fileLocation[3] = "/Users/akhil-pt6225/Downloads/test3.jpg";
+            fileLocation[4] = "/Users/akhil-pt6225/Downloads/test7.jpg";
 //        fileLocation[5] = "/Users/akhil-pt6225/Downloads/test10.jpg";
 //        fileLocation[6] = "/Users/akhil-pt6225/Downloads/test11.jpg";
 //        fileLocation[7] = "/Users/akhil-pt6225/Downloads/test13.jpg";
 //        fileLocation[8] = "/Users/akhil-pt6225/Downloads/test14.jpg";
 //        fileLocation[9] = "/Users/akhil-pt6225/Downloads/test.png";
-        CountDownLatch latch = new CountDownLatch(4);
-        ExecutorService executor = Executors.newSingleThreadExecutor();
-        for (int i = 0; i < 1; i++) {
-            Runnable obj = new UploadFileClient2("localhost", 50054, fileLocation[i],latch);
-            executor.execute(obj);
-        }
+            CountDownLatch latch = new CountDownLatch(5);
+            ExecutorService executor = Executors.newFixedThreadPool(2);
+            for (int i = 0; i < 5; i++) {
+                Runnable obj = new UploadFileClient2("localhost", 50055, fileLocation[i], latch);
+                executor.execute(obj);
+            }
 //        long time1 = System.currentTimeMillis() - time;
 //        logger1.info("Total Time Taken :" + " " + time1 );
-        try {
-            latch.await();
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+            try {
+                latch.await();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            executor.shutdown();
         }
-        executor.shutdown();
     }
-}
+
 
 
 
